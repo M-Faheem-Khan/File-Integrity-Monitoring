@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"m-faheem-khan/file-integrity-monitoring/pkg/db"
 	"m-faheem-khan/file-integrity-monitoring/pkg/fim"
 )
 
@@ -32,7 +33,8 @@ func main() {
 	}
 
 	if *arg_build_hash_db {
-		fim.BuildHashDB(*arg_dir_path)
+		sdb := db.GetDatabase()
+		fim.BuildHashDB(*arg_dir_path, sdb)
 	}
 
 }

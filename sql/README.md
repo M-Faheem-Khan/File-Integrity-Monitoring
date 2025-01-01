@@ -13,8 +13,9 @@ CREATE TABLE IF NOT EXISTS FIM_HASHES (
     file_path VARCHAR(4096),      -- max linux file path size
     file_hash VARCHAR(40),        -- SHA256 hash size(hex)
     integrity_status VARCHAR(40), -- Integrity Status
-    last_event VARCHAR(40),       -- Event Name
     last_integrity_scan_time DATETIME DEFAULT CURRENT_TIMESTAMP
+    last_event VARCHAR(40),       -- Event Name
+    last_event_scan_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
 

@@ -2,20 +2,24 @@ package fim
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"fmt"
 	"io"
 	"io/fs"
 	"log"
+	"m-faheem-khan/file-integrity-monitoring/pkg/db"
+	"m-faheem-khan/file-integrity-monitoring/pkg/enums"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 var symlinkTargets = make(map[string]string)
 var mu sync.Mutex
 
-func BuildHashDB(rootDir string) {
+func BuildHashDB(rootDir string, sdb *sql.DB) {
 	fmt.Printf("Building Hash DB for %s\n", rootDir)
 
 	err := filepath.WalkDir(rootDir, func(path string, d fs.DirEntry, err error) error {
@@ -31,6 +35,16 @@ func BuildHashDB(rootDir string) {
 				return nil
 			}
 			fmt.Printf("%s:\t%x\n", path, hash)
+			r := db.Row{
+				FilePath:             path,
+				ShaHash:              string(hash),
+				IntegrityStatus:      enums.INTEGRITY_INITIAL_SCAN,
+				LastIntegritScanTime: time.Now(),
+				LastEventName:        enums.EVENT_INITIAL_SCAN,
+				LastEventNameTime:    time.Now(),
+			}
+
+			db.Insert(sdb, r) // insert into db
 		}
 
 		// Iterate over Symlink directories
@@ -58,12 +72,11 @@ func BuildHashDB(rootDir string) {
 				symlinkTargets[targetPath] = targetPath
 				mu.Unlock()
 
-				BuildHashDB(targetPath) // recursive call
+				BuildHashDB(targetPath, sdb) // recursive call
 
 			} else {
 				log.Printf("Skipping duplicate symlink target: %s\n", targetPath)
 			}
-
 		}
 
 		return nil
