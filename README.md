@@ -1,4 +1,4 @@
-# File-Integrity-Monitoring
+# File-Integrity-Monitoring (UNDER-DEVELOPMENT)
 A File Integrity Monitoring solution written in Golang.
 
 [![Scorecard supply-chain security](https://github.com/M-Faheem-Khan/File-Integrity-Monitoring/actions/workflows/scorecard.yml/badge.svg)](https://github.com/M-Faheem-Khan/File-Integrity-Monitoring/actions/workflows/scorecard.yml)
