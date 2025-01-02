@@ -3,6 +3,7 @@ package fim
 import (
 	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/fs"
@@ -11,33 +12,29 @@ import (
 	"m-faheem-khan/file-integrity-monitoring/pkg/enums"
 	"os"
 	"path/filepath"
-	"strings"
-	"sync"
 	"time"
 )
 
-var symlinkTargets = make(map[string]string)
-var mu sync.Mutex
-
 func BuildHashDB(rootDir string, sdb *sql.DB) {
 	fmt.Printf("Building Hash DB for %s\n", rootDir)
+	count := 0
 
 	err := filepath.WalkDir(rootDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Generate hash for files
-		if !d.IsDir() && d.Type() != fs.ModeSymlink {
+		// Ignore directories, Symlinks & Character Devices
+		if !d.IsDir() && d.Type() != fs.ModeSymlink && d.Type() != fs.ModeCharDevice {
 			hash, err := generateSHA256Hash(path)
 			if err != nil {
 				log.Printf("Error generating hash for %s: %v\n", path, err)
 				return nil
 			}
-			fmt.Printf("%s:\t%x\n", path, hash)
+
 			r := db.Row{
 				FilePath:             path,
-				ShaHash:              string(hash),
+				ShaHash:              hash,
 				IntegrityStatus:      enums.INTEGRITY_INITIAL_SCAN,
 				LastIntegritScanTime: time.Now(),
 				LastEventName:        enums.EVENT_INITIAL_SCAN,
@@ -45,38 +42,7 @@ func BuildHashDB(rootDir string, sdb *sql.DB) {
 			}
 
 			db.Insert(sdb, r) // insert into db
-		}
-
-		// Iterate over Symlink directories
-		if d.Type() == fs.ModeSymlink {
-			fmt.Printf("%s is a symlink.\n", path)
-			// Resolve the symbolic link to get the actual file path
-			targetPath, err := os.Readlink(path)
-			if err != nil {
-				log.Printf("Error reading symbolic link %s: %v\n", path, err)
-				return nil
-			}
-
-			// Handle cases where targetPath does not start with "/"
-			if !strings.HasPrefix(targetPath, "/") {
-				targetPath = filepath.Join(filepath.Dir(path), targetPath)
-			}
-
-			// Check if the targetPath has already been processed
-			mu.Lock()
-			_, exists := symlinkTargets[targetPath]
-			mu.Unlock()
-
-			if !exists {
-				mu.Lock()
-				symlinkTargets[targetPath] = targetPath
-				mu.Unlock()
-
-				BuildHashDB(targetPath, sdb) // recursive call
-
-			} else {
-				log.Printf("Skipping duplicate symlink target: %s\n", targetPath)
-			}
+			count++
 		}
 
 		return nil
@@ -87,20 +53,31 @@ func BuildHashDB(rootDir string, sdb *sql.DB) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Finished Generating Hash for %s.\n", rootDir)
+	fmt.Printf("Finished Generating Hash for %s(%d).\n", rootDir, count)
 }
 
-func generateSHA256Hash(filePath string) ([]byte, error) {
+func generateSHA256Hash(filePath string) (string, error) {
+	// application is hanging due to large file analysis
+	finfo, err := os.Lstat(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	// Lets see what is hanging the program
+	fmt.Printf("Generating hash for %s of size %d.\n", filePath, finfo.Size())
+
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer file.Close()
 
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return hash.Sum(nil), nil
+	hash_string := hex.EncodeToString(hash.Sum(nil))
+
+	return hash_string, nil
 }
