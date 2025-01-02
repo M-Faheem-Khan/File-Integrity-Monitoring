@@ -24,8 +24,12 @@ func BuildHashDB(rootDir string, sdb *sql.DB) {
 			return err
 		}
 
+		if d.Type() != fs.ModeSymlink && d.Type() != fs.ModeCharDevice {
+			fmt.Printf("Skipping %s - not a file %s", path, fs.ModeType.String())
+		}
+
 		// Ignore directories, Symlinks & Character Devices
-		if !d.IsDir() && d.Type() != fs.ModeSymlink && d.Type() != fs.ModeCharDevice {
+		if !d.IsDir() {
 			hash, err := generateSHA256Hash(path)
 			if err != nil {
 				log.Printf("Error generating hash for %s: %v\n", path, err)
