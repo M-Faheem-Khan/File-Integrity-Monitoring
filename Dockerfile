@@ -3,6 +3,7 @@ FROM golang:bookworm@sha256:2e838582004fab0931693a3a84743ceccfbfeeafa8187e87291a
 RUN mkdir /build
 COPY . /build/
 WORKDIR /build
+RUN go mod tidy
 RUN go build -o fim cmd/main.go
 
 # Deploy Stage
@@ -11,7 +12,4 @@ WORKDIR /app
 COPY --from=builder /build/fim /app/
 WORKDIR /app
 
-EXPOSE 3000
 CMD [ "sh" ]
-
-# EOF
