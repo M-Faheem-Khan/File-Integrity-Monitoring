@@ -35,6 +35,7 @@ func main() {
 	if *arg_build_hash_db {
 		sdb := db.GetDatabase()
 		fim.BuildHashDB(*arg_dir_path, sdb)
+		db.GetDatabase().Close() // close db building hash
 	}
 
 }
