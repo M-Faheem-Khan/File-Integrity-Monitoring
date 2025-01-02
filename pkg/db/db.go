@@ -10,8 +10,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const TABLE_SCHEMA_PATH = "table_schema.sql"
-
 type Row struct {
 	FilePath             string
 	ShaHash              string
@@ -29,14 +27,13 @@ func GetDatabase() *sql.DB {
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS FIM_HASHES (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		file_path VARCHAR(4096),
 		file_hash VARCHAR(40),
 		integrity_status VARCHAR(40),
-		last_integrity_scan_time DATETIME DEFAULT CURRENT_TIMESTAMP
+		last_integrity_scan_time DATETIME DEFAULT CURRENT_TIMESTAMP,
 		last_event VARCHAR(40),
 		last_event_scan_time DATETIME DEFAULT CURRENT_TIMESTAMP);`)
 
@@ -48,8 +45,8 @@ func GetDatabase() *sql.DB {
 
 func Insert(db *sql.DB, row Row) bool {
 	_, err := db.Exec(
-		"INSERT INTO FIM_HASHES VALUES (file_hash, file_hash, integrity_status, lastevent) (?, ?, ?, ?);",
-		row.FilePath, row.ShaHash, row.IntegrityStatus, row.LastEventName)
+		"INSERT INTO FIM_HASHES (file_path, file_hash, integrity_status, last_event) VALUES (?, ?, ?, ?);",
+		row.FilePath, row.ShaHash, row.IntegrityStatus.String(), row.LastEventName.String())
 
 	if err != nil {
 		slog.Error(err.Error())
